@@ -3,7 +3,7 @@ Begin VB.Form ServerForm
    Caption         =   "¿ù»~"
    ClientHeight    =   7965
    ClientLeft      =   225
-   ClientTop       =   885
+   ClientTop       =   915
    ClientWidth     =   12435
    BeginProperty Font 
       Name            =   "·L³n¥¿¶ÂÅé"
@@ -49,9 +49,9 @@ Begin VB.Form ServerForm
             Strikethrough   =   0   'False
          EndProperty
          ForeColor       =   &H80000008&
-         Height          =   1695
+         Height          =   975
          Left            =   240
-         ScaleHeight     =   1695
+         ScaleHeight     =   975
          ScaleWidth      =   1920
          TabIndex        =   1
          Top             =   240

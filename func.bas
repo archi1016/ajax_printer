@@ -132,3 +132,22 @@ Public Function SaveImageToJpgFile(ByVal hImage As Long, ByVal FP As String, ByV
     SaveImageToJpgFile = (GdipSaveImageToFile(hImage, StrPtr(FP), EncodeGuid, VarPtr(EncodeParams)) = GpStatus_Ok)
 End Function
 
+Public Function IsPrinterOnline(ByVal PrinterName As String) As Boolean
+    Dim hPrinter As Long
+    Dim Buffer() As Byte
+    Dim nNeeded As Long
+    Dim PI_2 As PRINTER_INFO_2
+    
+    IsPrinterOnline = False
+    If 0 <> OpenPrinterW(StrPtr(PrinterName), hPrinter, 0) Then
+        ReDim Buffer(4095)
+        GetPrinterW hPrinter, 2, VarPtr(Buffer(0)), 0, nNeeded
+        ReDim Buffer(nNeeded - 1)
+        If 0 <> GetPrinterW(hPrinter, 2, VarPtr(Buffer(0)), nNeeded, nNeeded) Then
+            CopyMemory VarPtr(PI_2), VarPtr(Buffer(0)), Len(PI_2)
+            IsPrinterOnline = (0 = PI_2.Status)
+        End If
+    
+        ClosePrinter hPrinter
+    End If
+End Function

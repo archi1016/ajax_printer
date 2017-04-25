@@ -56,7 +56,11 @@ Private Sub Class_Terminate()
     Set ToDevice = Nothing
 End Sub
 
-Public Sub SavePng(ByVal FP As String, toDev As Object)
+Public Sub Init(toDev As Object)
+    Set ToDevice = toDev
+End Sub
+
+Public Sub SavePng(ByVal FP As String)
     Dim BmpFile As String
     Dim hImage As Long
     
@@ -64,7 +68,7 @@ Public Sub SavePng(ByVal FP As String, toDev As Object)
     DeleteFile BmpFile
     DeleteFile FP
     
-    SavePicture toDev.Image, BmpFile
+    SavePicture ToDevice.Image, BmpFile
     If GpStatus_Ok = GdipLoadImageFromFile(StrPtr(BmpFile), hImage) Then
         Call SaveImageToPngFile(hImage, FP)
         GdipDisposeImage hImage
@@ -72,28 +76,28 @@ Public Sub SavePng(ByVal FP As String, toDev As Object)
     
 End Sub
 
-Public Sub PrintErrorMessage(ByVal M As String, toDev As Object)
-    With toDev
-        .Cls
+Public Sub PrintErrorMessage(ByVal M As String)
+    With ToDevice
         .ForeColor = vbRed
         .FontName = "Verdana"
         .FontSize = 16
-        .Width = .TextWidth(M)
-        .Height = .TextHeight(M)
+        .Width = CountTextWidth(M) * Screen.TwipsPerPixelX
+        .Height = CountTextHeight(M) * Screen.TwipsPerPixelY
+        .Cls
         .CurrentX = 0
         .CurrentY = 0
     End With
-    toDev.Print M
-    toDev.Refresh
+
+    ToDevice.Print M
+    ToDevice.Refresh
 End Sub
 
-Public Function PrintFromXmlStr(ByVal IsPreview As Boolean, XmlRoot As Object, toDev As Object) As String
+Public Function PrintFromXmlStr(ByVal IsPreview As Boolean, XmlRoot As Object) As String
     Dim XmlNode As Object
     Dim S As String
     Dim T As String
 
     IsPreviewMode = IsPreview
-    Set ToDevice = toDev
     
     PageWidth = ToDevice.Width
     PageHeight = ToDevice.Height
@@ -130,21 +134,21 @@ Private Function RunScript(XmlNode As Object, ByVal T As String) As String
         
            
         Case "padding_top"
-            PaddingTop = SafeGetDistance(T, ToDevice.Width)
-            PageHeight = ToDevice.Height - PaddingTop - PaddingBottom
+            PaddingTop = SafeGetDistance(T, PageWidth)
+            PageHeight = PageHeight - PaddingTop - PaddingBottom
             ToDevice.CurrentY = PaddingTop
         
         Case "padding_bottom"
-            PaddingBottom = SafeGetDistance(T, ToDevice.Width)
-            PageHeight = ToDevice.Height - PaddingTop - PaddingBottom
+            PaddingBottom = SafeGetDistance(T, PageWidth)
+            PageHeight = PageHeight - PaddingTop - PaddingBottom
         
         Case "padding_left"
-            PaddingLeft = SafeGetDistance(T, ToDevice.Width)
-            PageWidth = ToDevice.Width - PaddingLeft - PaddingRight
+            PaddingLeft = SafeGetDistance(T, PageWidth)
+            PageWidth = PageWidth - PaddingLeft - PaddingRight
         
         Case "padding_right"
-            PaddingRight = SafeGetDistance(T, ToDevice.Width)
-            PageWidth = ToDevice.Width - PaddingLeft - PaddingRight
+            PaddingRight = SafeGetDistance(T, PageWidth)
+            PageWidth = PageWidth - PaddingLeft - PaddingRight
         
         Case "push_xy"
             stLocationX(stLocationIndex) = ToDevice.CurrentX
@@ -464,6 +468,20 @@ Private Sub DrawLine(ByVal T As String)
     H = SafeGetDistance(T, PageWidth)
     ToDevice.Line (PaddingLeft, ToDevice.CurrentY)-(PaddingLeft + PageWidth, ToDevice.CurrentY + H), , BF
 End Sub
+
+Private Function CountTextWidth(ByVal T As String) As Single
+    Dim RC As RECT
+    
+    DrawTextW ToDevice.hDC, StrPtr(T), -1, RC, DT_CALCRECT
+    CountTextWidth = CSng(RC.Right - RC.Left)
+End Function
+
+Private Function CountTextHeight(ByVal T As String) As Single
+    Dim RC As RECT
+    
+    CountTextHeight = CSng(DrawTextW(ToDevice.hDC, StrPtr(T), -1, RC, DT_CALCRECT))
+End Function
+
 
 Private Function SafeGetColor(ByVal T As String) As Long
     Dim S As String

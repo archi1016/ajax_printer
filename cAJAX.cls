@@ -85,6 +85,8 @@ Private Function OperationPreview(ByVal XmlStr As String, TSK As cTcpSocket) As 
     Dim S As String
     Dim FP As String
 
+    PR.Init ToDevice
+
     Set Xml = GetXmlObject
     If Xml.LoadXML(XmlStr) Then
         Set XmlRoot = Xml.documentElement
@@ -99,7 +101,7 @@ Private Function OperationPreview(ByVal XmlStr As String, TSK As cTcpSocket) As 
                     .ScaleMode = Printer.ScaleMode
                     .Move .Left, 0, Printer.ScaleWidth, Printer.ScaleHeight
                 End With
-                S = PR.PrintFromXmlStr(True, XmlRoot, ToDevice)
+                S = PR.PrintFromXmlStr(True, XmlRoot)
             End If
         Else
             S = "not paper document"
@@ -109,11 +111,11 @@ Private Function OperationPreview(ByVal XmlStr As String, TSK As cTcpSocket) As 
     End If
     
     If "" <> S Then
-        PR.PrintErrorMessage S, ToDevice
+        PR.PrintErrorMessage S
     End If
     
     FP = App.Path + "\" + PREVIEW_PNG
-    PR.SavePng FP, ToDevice
+    PR.SavePng FP
     OperationPreview = ResponseFile("image/png", FP, TSK)
     
     Set PR = Nothing
@@ -134,7 +136,8 @@ Private Function OperationPrint(ByVal XmlStr As String, TSK As cTcpSocket) As Bo
         If XmlRoot.NodeName = "paper" Then
             S = SelectPrinter(SafeGetXmlNodeAttr(XmlRoot, "printer"))
             If "" = S Then
-                S = PR.PrintFromXmlStr(False, XmlRoot, Printer)
+                PR.Init Printer
+                S = PR.PrintFromXmlStr(False, XmlRoot)
             End If
         Else
             S = "not paper document"
@@ -163,18 +166,20 @@ Private Function OperationListPrinter(TSK As cTcpSocket) As Boolean
     For Each P In Printers
         Set Printer = P
         
-        With Printer
-            .ScaleMode = vbMillimeters
-    
-            S = "{"
-            S = S + """name"": " + """" + .DeviceName + """"
-            S = S + ",""width"": " + """" + CStr(.ScaleWidth) + """"
-            S = S + ",""height"": " + """" + CStr(.ScaleHeight) + """"
-            S = S + "}"
-            
-            T(C) = S
-            C = C + 1
-        End With
+        If IsPrinterOnline(Printer.DeviceName) Then
+            With Printer
+                .ScaleMode = vbMillimeters
+        
+                S = "{"
+                S = S + """name"": " + """" + .DeviceName + """"
+                S = S + ",""width"": " + """" + CStr(.ScaleWidth) + """"
+                S = S + ",""height"": " + """" + CStr(.ScaleHeight) + """"
+                S = S + "}"
+                
+                T(C) = S
+                C = C + 1
+            End With
+        End If
     Next
     
     ReDim Preserve T(C - 1)
