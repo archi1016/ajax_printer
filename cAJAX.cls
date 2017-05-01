@@ -129,6 +129,7 @@ Private Function OperationPrint(ByVal XmlStr As String, TSK As cTcpSocket) As Bo
     Dim Pnt As String
     Dim PR As New cPaper
     Dim S As String
+    Dim C As Long
     
     Set Xml = GetXmlObject
     If Xml.LoadXML(XmlStr) Then
@@ -136,6 +137,12 @@ Private Function OperationPrint(ByVal XmlStr As String, TSK As cTcpSocket) As Bo
         If XmlRoot.NodeName = "paper" Then
             S = SelectPrinter(SafeGetXmlNodeAttr(XmlRoot, "printer"))
             If "" = S Then
+                C = SafeGetNumbersFromString(SafeGetXmlNodeAttr(XmlRoot, "copies"))
+                If C > 0 Then
+                    If C > 100 Then C = 100
+                    Printer.Copies = C
+                End If
+            
                 PR.Init Printer
                 S = PR.PrintFromXmlStr(False, XmlRoot)
             End If
@@ -428,6 +435,7 @@ Private Function SelectPrinter(ByVal PrinterName As String) As String
                     '.FontBold = True
                     .DrawStyle = vbInsideSolid
                     .ScaleMode = vbTwips
+                    .Copies = 1
                 End With
                 
                 SelectPrinter = ""
