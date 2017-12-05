@@ -81,7 +81,7 @@ XML struct
 	</paper>
 
 
-Command
+<l c="COMMAND" attr1="VALUE" attr2="VALUE">TEXT</l>
 
 	new_page
 		換頁
