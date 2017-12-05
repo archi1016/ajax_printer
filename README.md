@@ -5,6 +5,20 @@ Use AJAX for browser to print receipt
 
 ![doc_1](doc-1.png)
 
+
+Query url
+
+	GET http://127.0.0.1:35427/?q=list_printer
+		RETURN Printers Information
+		
+	POST http://127.0.0.1:35427/?q=preview
+		POST Xml struct
+		RETURN png to display (only last page)
+		
+	POST http://127.0.0.1:35427/?q=print
+		POST xml struct
+
+
 XML struct
 
 	<paper printer="{PRINTER}" copies="{COPIES}">
@@ -65,3 +79,6 @@ XML struct
 
 		<l c="done" />
 	</paper>
+
+
+Command
