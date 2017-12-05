@@ -22,7 +22,11 @@ Private Sub Class_Initialize()
     '
 End Sub
 
-Public Sub SetPreview(toDev As Object)
+Private Sub Class_Terminate()
+    Set ToDevice = Nothing
+End Sub
+
+Public Sub SetObject(toDev As Object)
     Set ToDevice = toDev
 End Sub
         
@@ -85,7 +89,7 @@ Private Function OperationPreview(ByVal XmlStr As String, TSK As cTcpSocket) As 
     Dim S As String
     Dim FP As String
 
-    PR.Init ToDevice
+    PR.Init ToDevice, Screen.TwipsPerPixelX, Screen.TwipsPerPixelY
 
     Set Xml = GetXmlObject
     If Xml.LoadXML(XmlStr) Then
@@ -99,7 +103,7 @@ Private Function OperationPreview(ByVal XmlStr As String, TSK As cTcpSocket) As 
                     .Font = Printer.Font
                     .DrawStyle = Printer.DrawStyle
                     .ScaleMode = Printer.ScaleMode
-                    .Move .Left, 0, Printer.ScaleWidth, Printer.ScaleHeight
+                    .Move 0, 0, Printer.ScaleWidth, Printer.ScaleHeight
                 End With
                 S = PR.PrintFromXmlStr(True, XmlRoot)
             End If
@@ -137,13 +141,13 @@ Private Function OperationPrint(ByVal XmlStr As String, TSK As cTcpSocket) As Bo
         If XmlRoot.NodeName = "paper" Then
             S = SelectPrinter(SafeGetXmlNodeAttr(XmlRoot, "printer"))
             If "" = S Then
-                C = SafeGetNumbersFromString(SafeGetXmlNodeAttr(XmlRoot, "copies"))
+                C = CLng(SafeGetNumbersFromString(SafeGetXmlNodeAttr(XmlRoot, "copies")))
                 If C > 0 Then
                     If C > 100 Then C = 100
                     Printer.Copies = C
                 End If
             
-                PR.Init Printer
+                PR.Init Printer, Printer.TwipsPerPixelX, Printer.TwipsPerPixelY
                 S = PR.PrintFromXmlStr(False, XmlRoot)
             End If
         Else
@@ -430,9 +434,8 @@ Private Function SelectPrinter(ByVal PrinterName As String) As String
             If P.DeviceName = PrinterName Then
                 Set Printer = P
                 With Printer
-                    .ForeColor = 0
+                    .ForeColor = vbBlack
                     .FontName = "Verdana"
-                    '.FontBold = True
                     .DrawStyle = vbInsideSolid
                     .ScaleMode = vbTwips
                     .Copies = 1

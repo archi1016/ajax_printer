@@ -72,7 +72,7 @@ Public Const GpStatus_PropertyNotFound = 19
 Public Const GpStatus_PropertyNotSupported = 20
 
 Public Declare Function GdipCreateFromHDC Lib "gdiplus" _
-    (ByVal hDC As Long, _
+    (ByVal hdc As Long, _
      hGraphics As Long) As Long
 
 Public Declare Function GdipDeleteGraphics Lib "gdiplus" _
@@ -272,7 +272,11 @@ Public Declare Function GdipSetCompositingQuality Lib "gdiplus" _
 
 Public Declare Function GdipSetSmoothingMode Lib "gdiplus" _
     (ByVal hGraphics As Long, _
-     ByVal mSmoothingMode As Long) As Long
+     ByVal nSmoothingMode As Long) As Long
+
+Public Declare Function GdipSetPageUnit Lib "gdiplus" _
+    (ByVal hGraphics As Long, _
+     ByVal nUnit As Long) As Long
 
 Public Const QualityModeInvalid = -1
 Public Const QualityModeDefault = 0
@@ -349,12 +353,13 @@ Public Declare Function GdipCreateStringFormat Lib "gdiplus" _
      ByVal language As Long, _
      hFormat As Long) As Long
      
+Public Declare Function GdipStringFormatGetGenericTypographic Lib "gdiplus" _
+    (hFormat As Long) As Long
+    
 Public Declare Function GdipDeleteStringFormat Lib "gdiplus" _
     (ByVal hFormat As Long) As Long
+    
      
-     
-     
-
 Public Const FillModeAlternate = 0
 Public Const FillModeWinding = 1
 
@@ -372,7 +377,7 @@ Public Declare Function GdipAddPathString Lib "gdiplus" _
      ByVal hFontFamily As Long, _
      ByVal style As Long, _
      ByVal emSize As Single, _
-     layoutRect As RECTF, _
+     layoutRECT As RECTF, _
      ByVal hStringFormat As Long) As Long
      
 Public Declare Function GdipGetPathWorldBounds Lib "gdiplus" _
@@ -392,7 +397,7 @@ Public Declare Function GdipDeleteFontFamily Lib "gdiplus" _
     (ByVal hFontFamily As Long) As Long
 
 Public Declare Function GdipCreateFontFromDC Lib "gdiplus" _
-    (ByVal hDC As Long, _
+    (ByVal hdc As Long, _
      hFont As Long) As Long
 
 Public Declare Function GdipCreateFont Lib "gdiplus" _
@@ -416,7 +421,7 @@ Public Declare Function GdipMeasureString Lib "gdiplus" _
      ByVal WCHAR As Long, _
      ByVal length As Long, _
      ByVal hFont As Long, _
-     layoutRect As RECTF, _
+     layoutRECT As RECTF, _
      ByVal hStringFormat As Long, _
      boundingBox As RECTF, _
      codepointsFitted As Long, _
@@ -427,7 +432,7 @@ Public Declare Function GdipDrawString Lib "gdiplus" _
      ByVal WCHAR As Long, _
      ByVal length As Long, _
      ByVal hFont As Long, _
-     layoutRect As RECTF, _
+     layoutRECT As RECTF, _
      ByVal hStringFormat As Long, _
      ByVal hBrush As Long) As Long
 

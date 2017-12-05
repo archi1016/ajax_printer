@@ -15,6 +15,7 @@ Option Explicit
 
 Dim IsPreviewMode As Boolean
 Dim ToDevice As Object
+Dim DS As cDrawString
 
 Dim PaddingTop As Single
 Dim PaddingBottom As Single
@@ -38,10 +39,9 @@ Dim stLocationX(127) As Single
 Dim stLocationY(127) As Single
 Dim stLocationIndex As Long
 
-Dim stColor(127) As Long
-Dim stColorIndex As Long
-
 Private Sub Class_Initialize()
+    Set DS = New cDrawString
+
     PaddingTop = 0
     PaddingBottom = 0
     PaddingLeft = 0
@@ -49,15 +49,19 @@ Private Sub Class_Initialize()
     
     stFontNameIndex = 0
     stLocationIndex = 0
-    stColorIndex = 0
 End Sub
 
 Private Sub Class_Terminate()
+    Set DS = Nothing
     Set ToDevice = Nothing
 End Sub
 
-Public Sub Init(toDev As Object)
+Public Sub Init(toDev As Object, devTwipsPerPixelX As Single, devTwipsPerPixelY As Single)
     Set ToDevice = toDev
+    
+    ToDevice.PSet (0, 0), vbWhite   'start printer hdc
+    
+    DS.Init devTwipsPerPixelX, devTwipsPerPixelY
 End Sub
 
 Public Sub SavePng(ByVal FP As String)
@@ -81,8 +85,8 @@ Public Sub PrintErrorMessage(ByVal M As String)
         .ForeColor = vbRed
         .FontName = "Verdana"
         .FontSize = 16
-        .Width = CountTextWidth(M) * Screen.TwipsPerPixelX
-        .Height = CountTextHeight(M) * Screen.TwipsPerPixelY
+        .Width = .TextWidth(M)
+        .Height = .TextHeight(M)
         .Cls
         .CurrentX = 0
         .CurrentY = 0
@@ -98,12 +102,12 @@ Public Function PrintFromXmlStr(ByVal IsPreview As Boolean, XmlRoot As Object) A
     Dim T As String
 
     IsPreviewMode = IsPreview
-    
+
     PageWidth = ToDevice.Width
     PageHeight = ToDevice.Height
-    
+
     For Each XmlNode In XmlRoot.selectNodes("l")
-         PrintFromXmlStr = RunScript(XmlNode, XmlNode.Text)
+         PrintFromXmlStr = RunScript(XmlNode)
          If "" <> PrintFromXmlStr Then Exit For
     Next
         
@@ -111,12 +115,15 @@ Public Function PrintFromXmlStr(ByVal IsPreview As Boolean, XmlRoot As Object) A
     
 End Function
 
-Private Function RunScript(XmlNode As Object, ByVal T As String) As String
+Private Function RunScript(XmlNode As Object) As String
+    Dim T As String
     Dim C As String
     Dim XmlNode_2 As Object
 
     RunScript = ""
+    T = XmlNode.Text
     C = SafeGetXmlNodeAttr(XmlNode, "c")
+
     Select Case C
         Case "new_page"
             If IsPreviewMode Then
@@ -135,20 +142,20 @@ Private Function RunScript(XmlNode As Object, ByVal T As String) As String
            
         Case "padding_top"
             PaddingTop = SafeGetDistance(T, PageWidth)
-            PageHeight = PageHeight - PaddingTop - PaddingBottom
+            PageHeight = ToDevice.Height - PaddingTop - PaddingBottom
             ToDevice.CurrentY = PaddingTop
         
         Case "padding_bottom"
             PaddingBottom = SafeGetDistance(T, PageWidth)
-            PageHeight = PageHeight - PaddingTop - PaddingBottom
+            PageHeight = ToDevice.Height - PaddingTop - PaddingBottom
         
         Case "padding_left"
             PaddingLeft = SafeGetDistance(T, PageWidth)
-            PageWidth = PageWidth - PaddingLeft - PaddingRight
+            PageWidth = ToDevice.Width - PaddingLeft - PaddingRight
         
         Case "padding_right"
             PaddingRight = SafeGetDistance(T, PageWidth)
-            PageWidth = PageWidth - PaddingLeft - PaddingRight
+            PageWidth = ToDevice.Width - PaddingLeft - PaddingRight
         
         Case "push_xy"
             stLocationX(stLocationIndex) = ToDevice.CurrentX
@@ -180,34 +187,43 @@ Private Function RunScript(XmlNode As Object, ByVal T As String) As String
         Case "scroll_down"
             ToDevice.CurrentY = ToDevice.CurrentY + SafeGetDistance(T, PageHeight)
             
+            
+            
         Case "line"
             Call DrawLine(T)
+            
+        Case "line_w"
+            Call DrawLineWidth(XmlNode)
+        
+        
         
         Case "print"
-            ToDevice.CurrentX = PaddingLeft
-            Call PrintText(XmlNode, T, False)
+            Call PrintText(XmlNode, PaddingLeft, PageWidth, DT_LEFT, False)
             
         Case "print_i"
-            ToDevice.CurrentX = PaddingLeft
-            Call PrintText(XmlNode, T, True)
+            Call PrintText(XmlNode, PaddingLeft, PageWidth, DT_LEFT, True)
             
         Case "print_center"
-            ToDevice.CurrentX = PaddingLeft + (PageWidth - GetTextWidth(XmlNode, T)) / 2
-            Call PrintText(XmlNode, T, False)
+            Call PrintText(XmlNode, PaddingLeft, PageWidth, DT_CENTER, False)
             
         Case "print_center_i"
-            ToDevice.CurrentX = PaddingLeft + (PageWidth - GetTextWidth(XmlNode, T)) / 2
-            Call PrintText(XmlNode, T, True)
+            Call PrintText(XmlNode, PaddingLeft, PageWidth, DT_CENTER, True)
             
         Case "print_right"
-            ToDevice.CurrentX = PaddingLeft + (PageWidth - GetTextWidth(XmlNode, T))
-            Call PrintText(XmlNode, T, False)
+            Call PrintText(XmlNode, PaddingLeft, PageWidth, DT_RIGHT, False)
     
         Case "print_right_i"
-            ToDevice.CurrentX = PaddingLeft + (PageWidth - GetTextWidth(XmlNode, T))
-            Call PrintText(XmlNode, T, True)
+            Call PrintText(XmlNode, PaddingLeft, PageWidth, DT_RIGHT, True)
             
             
+            
+        Case "print_xy"
+            Call PrintTextXY(XmlNode)
+            
+        Case "print_vt"
+            Call PrintTextVertical(XmlNode)
+            
+ 
         Case "barcode"
             ToDevice.CurrentX = PaddingLeft
             Call PrintBarcode(XmlNode, T)
@@ -219,6 +235,7 @@ Private Function RunScript(XmlNode As Object, ByVal T As String) As String
         Case "barcode_right"
             ToDevice.CurrentX = PaddingLeft + (PageWidth - GetBarcodeWidth(XmlNode, T))
             Call PrintBarcode(XmlNode, T)
+            
             
             
         Case "fields"
@@ -263,21 +280,21 @@ Private Function RunCommonCommand(ByVal C As String, ByVal T As String) As Strin
             End If
             
             
-        Case "set_color"
-            ToDevice.ForeColor = SafeGetColor(T)
+        'Case "set_color"
+        '    ToDevice.ForeColor = SafeGetColor(T)
         
-        Case "push_color"
-            stColor(stColorIndex) = ToDevice.ForeColor
-            stColorIndex = stColorIndex + 1
+        'Case "push_color"
+        '    stColor(stColorIndex) = ToDevice.ForeColor
+        '    stColorIndex = stColorIndex + 1
             
-        Case "pop_color"
-            If 0 < stColorIndex Then
-                stColorIndex = stColorIndex - 1
-                ToDevice.ForeColor = stColor(stColorIndex)
-            End If
+        'Case "pop_color"
+        '    If 0 < stColorIndex Then
+        '        stColorIndex = stColorIndex - 1
+        '        ToDevice.ForeColor = stColor(stColorIndex)
+        '    End If
            
         Case Else
-            RunCommonCommand = "unknow command \""" + C + "\"""
+            RunCommonCommand = "unknow command """ + C + """"
             
     End Select
 End Function
@@ -286,7 +303,7 @@ Private Function GetBarcodeWidth(XmlNode As Object, ByVal T As String) As Single
     Dim BR As New cBarcode
     Dim barW As Single
     
-    barW = CSng(SafeGetXmlNodeAttr(XmlNode, "bw")) * 20!
+    barW = CSng(SafeGetXmlNodeAttr(XmlNode, "bw"))
     GetBarcodeWidth = BR.GetWidth(T, barW)
     
     Set BR = Nothing
@@ -297,8 +314,8 @@ Private Sub PrintBarcode(XmlNode As Object, ByVal T As String)
     Dim barW As Single
     Dim barH As Single
     
-    barW = CSng(SafeGetXmlNodeAttr(XmlNode, "bw")) * 20!
-    barH = CSng(SafeGetXmlNodeAttr(XmlNode, "h")) * 20!
+    barW = CSng(SafeGetXmlNodeAttr(XmlNode, "bw"))
+    barH = CSng(SafeGetXmlNodeAttr(XmlNode, "h"))
     If 0 < barH Then
         BR.Draw ToDevice, T, barW, barH
     End If
@@ -322,42 +339,32 @@ Private Function PrintFields(XmlNodeList As Object) As String
     For Each XmlNode In XmlNodeList
         C = SafeGetXmlNodeAttr(XmlNode, "c")
         T = XmlNode.Text
-    
+
         If "print" = Left$(C, 5) Then
             fW = SafeGetDistance(SafeGetXmlNodeAttr(XmlNode, "w"), PageWidth)
+            ToDevice.CurrentY = LastY
 
             Select Case C
                 Case "print"
-                    ToDevice.CurrentX = fL
-                    ToDevice.CurrentY = LastY
-                    Call PrintText(XmlNode, T, False)
+                    Call PrintText(XmlNode, fL, fW, DT_LEFT, False)
                 
                 Case "print_i"
-                    ToDevice.CurrentX = fL
-                    ToDevice.CurrentY = LastY
-                    Call PrintText(XmlNode, T, True)
+                    Call PrintText(XmlNode, fL, fW, DT_LEFT, True)
                     
                 Case "print_center"
-                    ToDevice.CurrentX = fL + (fW - GetTextWidth(XmlNode, T)) / 2
-                    ToDevice.CurrentY = LastY
-                    Call PrintText(XmlNode, T, False)
+                    Call PrintText(XmlNode, fL, fW, DT_CENTER, False)
                     
                 Case "print_center_i"
-                    ToDevice.CurrentX = fL + (fW - GetTextWidth(XmlNode, T)) / 2
-                    ToDevice.CurrentY = LastY
-                    Call PrintText(XmlNode, T, True)
+                    Call PrintText(XmlNode, fL, fW, DT_CENTER, True)
                     
                 Case "print_right"
-                    ToDevice.CurrentX = fL + (fW - GetTextWidth(XmlNode, T))
-                    ToDevice.CurrentY = LastY
-                    Call PrintText(XmlNode, T, False)
+                    Call PrintText(XmlNode, fL, fW, DT_RIGHT, False)
 
                 Case "print_right_i"
-                    ToDevice.CurrentX = fL + (fW - GetTextWidth(XmlNode, T))
-                    ToDevice.CurrentY = LastY
-                    Call PrintText(XmlNode, T, True)
+                    Call PrintText(XmlNode, fL, fW, DT_RIGHT, True)
                     
             End Select
+            
             fL = fL + fW
             If FieldFontHeight > FieldFontMaxHeight Then FieldFontMaxHeight = FieldFontHeight
             If FieldFontHeight < FieldFontMinHeight Then FieldFontMinHeight = FieldFontHeight
@@ -366,122 +373,172 @@ Private Function PrintFields(XmlNodeList As Object) As String
         End If
     Next
     
-    ToDevice.CurrentY = LastY + FieldFontMinHeight
+    ToDevice.CurrentY = LastY + FieldFontMaxHeight
     
     Set XmlNode = Nothing
 End Function
 
-Private Function GetTextWidth(XmlNode As Object, ByVal T As String) As Single
-    Dim newFontName As String
-    Dim newFontSize As String
-    Dim prevFontName As String
-    Dim prevFontSize As Single
-    
-    newFontName = SafeGetXmlNodeAttr(XmlNode, "font")
-    newFontSize = SafeGetXmlNodeAttr(XmlNode, "size")
-    If "" <> newFontName Then
-        prevFontName = ToDevice.FontName
-        ToDevice.FontName = newFontName
-    End If
-    If "" <> newFontSize Then
-        prevFontSize = ToDevice.FontSize
-        ToDevice.FontSize = CSng(newFontSize)
-    End If
-    
-    GetTextWidth = ToDevice.TextWidth(T)
-    
-    If "" <> newFontName Then
-        ToDevice.FontName = prevFontName
-    End If
-    If "" <> newFontSize Then
-        ToDevice.FontSize = prevFontSize
-    End If
-End Function
-
-Private Sub PrintText(XmlNode As Object, ByVal T As String, ByVal IsInvert As Boolean)
-    Dim L() As String
-    Dim U As Long
-    Dim I As Long
-    Dim newFontName As String
-    Dim newFontSize As String
-    Dim prevFontName As String
-    Dim prevFontSize As Single
-    Dim prevColor As Long
+Private Sub PrintTextVertical(XmlNode As Object)
+    Dim T As String
+    Dim TxtWidth As Single
+    Dim TxtHeight As Single
     Dim prevX As Single
     Dim prevY As Single
-
-
-    newFontName = SafeGetXmlNodeAttr(XmlNode, "font")
-    newFontSize = SafeGetXmlNodeAttr(XmlNode, "size")
-    If "" <> newFontName Then
-        prevFontName = ToDevice.FontName
-        ToDevice.FontName = newFontName
-    End If
-    If "" <> newFontSize Then
-        prevFontSize = ToDevice.FontSize
-        ToDevice.FontSize = CSng(newFontSize)
-    End If
+    Dim hdc As Long
+    Dim locX As Single
+    Dim locY As Single
     
-    If "" = T Then T = " "
-    FieldFontHeight = ToDevice.TextHeight(T)
-'Debug.Print ToDevice.FontName + ": " + T + ": " + CStr(FieldFontHeight)
-    
-    L = Split(T, "\n")
-    U = UBound(L)
+    Dim RC As RECT
 
     prevX = ToDevice.CurrentX
-    If IsInvert Then
-        prevColor = ToDevice.ForeColor
-        
-        prevY = ToDevice.CurrentY
-        ToDevice.Line (prevX, prevY)-(prevX + ToDevice.TextWidth(T), prevY + ToDevice.TextHeight(T)), , BF
-        
-        ToDevice.ForeColor = vbWhite
-        ToDevice.CurrentY = prevY
-        
-        For I = 0 To U
-            ToDevice.CurrentX = prevX
-            ToDevice.Print L(I)
-        Next
+    prevY = ToDevice.CurrentY
 
-        ToDevice.ForeColor = prevColor
-    Else
-        For I = 0 To U
-            ToDevice.CurrentX = prevX
-            ToDevice.Print L(I)
-        Next
+    hdc = DS.CreateVerticalFont(XmlNode, ToDevice)
+    
+    T = XmlNode.Text
+    If "" = T Then T = " "
+    DS.CountSize hdc, T, PageWidth, TxtWidth, TxtHeight
+    
+    locX = PaddingLeft + SafeGetDistance(SafeGetXmlNodeAttr(XmlNode, "x"), PageWidth)
+    locY = PaddingTop + SafeGetDistance(SafeGetXmlNodeAttr(XmlNode, "y"), PageHeight)
+    DS.DrawVertical ToDevice.hdc, T, locX, locY, TxtWidth, TxtHeight
+    Call DrawTextBorder(XmlNode, locX, locY, TxtWidth, TxtHeight)
+
+    ToDevice.CurrentX = prevX
+    ToDevice.CurrentY = prevY
+    
+    DS.DeleteVerticalFont ToDevice
+End Sub
+
+Private Sub PrintTextXY(XmlNode As Object)
+    Dim T As String
+    Dim TxtWidth As Single
+    Dim TxtHeight As Single
+    Dim prevX As Single
+    Dim prevY As Single
+    Dim hdc As Long
+    Dim locX As Single
+    Dim locY As Single
+    
+    Dim RC As RECT
+
+    prevX = ToDevice.CurrentX
+    prevY = ToDevice.CurrentY
+
+    DS.ChangeFont XmlNode, ToDevice
+    
+    T = XmlNode.Text
+    If "" = T Then T = " "
+    DS.CountSize ToDevice.hdc, T, PageWidth, TxtWidth, TxtHeight
+    
+    locX = PaddingLeft + SafeGetDistance(SafeGetXmlNodeAttr(XmlNode, "x"), PageWidth)
+    locY = PaddingTop + SafeGetDistance(SafeGetXmlNodeAttr(XmlNode, "y"), PageHeight)
+    DS.Draw ToDevice.hdc, T, DT_LEFT, locX, locY, TxtWidth, TxtHeight
+    Call DrawTextBorder(XmlNode, locX, locY, TxtWidth, TxtHeight)
+
+    ToDevice.CurrentX = prevX
+    ToDevice.CurrentY = prevY
+    
+    DS.RestoreFont ToDevice
+End Sub
+
+Private Sub PrintText(XmlNode As Object, ByVal drawLeft As Single, ByVal drawWidth As Single, ByVal nFormat As Long, ByVal IsInvert As Boolean)
+    Dim T As String
+    Dim TxtWidth As Single
+    Dim TxtHeight As Single
+    Dim prevX As Single
+    Dim prevY As Single
+    Dim RC As RECT
+
+    ToDevice.CurrentX = drawLeft
+    prevX = ToDevice.CurrentX
+    prevY = ToDevice.CurrentY
+
+    DS.ChangeFont XmlNode, ToDevice
+    
+    T = XmlNode.Text
+    If "" = T Then T = " "
+    DS.CountSize ToDevice.hdc, T, drawWidth, TxtWidth, TxtHeight
+    FieldFontHeight = TxtHeight     'For Field Print
+    
+    Select Case nFormat
+         Case DT_CENTER
+             prevX = prevX + (drawWidth - TxtWidth) / 2
+
+         Case DT_RIGHT
+             prevX = prevX + (drawWidth - TxtWidth)
+
+    End Select
+    
+    Call DrawTextBorder(XmlNode, prevX, prevY, TxtWidth, TxtHeight)
+    
+    If IsInvert Then
+        ToDevice.Line (prevX, prevY)-(prevX + TxtWidth, prevY + TxtHeight), , BF
+        ToDevice.ForeColor = vbWhite
+    End If
+
+    DS.Draw ToDevice.hdc, T, nFormat, prevX, prevY, TxtWidth, TxtHeight
+
+    If IsInvert Then
+        ToDevice.ForeColor = vbBlack
     End If
     
-    If "" <> newFontName Then
-        ToDevice.FontName = prevFontName
-    End If
-    If "" <> newFontSize Then
-        ToDevice.FontSize = prevFontSize
-    End If
+    ToDevice.CurrentX = drawLeft
+    ToDevice.CurrentY = prevY + TxtHeight
     
-    Erase L
+    DS.RestoreFont ToDevice
+End Sub
+
+Private Sub DrawTextBorder(XmlNode As Object, ByVal dX As Single, ByVal dy As Single, ByVal TxtWidth As Single, ByVal TxtHeight As Single)
+    Dim BorderT As String
+    Dim BorderWidth As Single
+    Dim I As Single
+    
+    BorderT = SafeGetXmlNodeAttr(XmlNode, "border")
+    If "" <> BorderT Then
+        BorderWidth = CSng(BorderT) * 20!
+        If 0 < BorderWidth Then
+            For I = 1 To BorderWidth
+                ToDevice.Line (dX - I, dy - I)-(dX + TxtWidth + I, dy + TxtHeight + I), , B
+            Next
+        End If
+    End If
 End Sub
 
 Private Sub DrawLine(ByVal T As String)
+    Dim prevX As Single
+    Dim prevY As Single
     Dim H As Single
     
+    prevX = ToDevice.CurrentX
+    prevY = ToDevice.CurrentY
+
     H = SafeGetDistance(T, PageWidth)
     ToDevice.Line (PaddingLeft, ToDevice.CurrentY)-(PaddingLeft + PageWidth, ToDevice.CurrentY + H), , BF
+
+    ToDevice.CurrentX = prevX
+    ToDevice.CurrentY = prevY + H
 End Sub
 
-Private Function CountTextWidth(ByVal T As String) As Single
-    Dim RC As RECT
+Private Sub DrawLineWidth(XmlNode As Object)
+    Dim prevX As Single
+    Dim prevY As Single
+    Dim lB As Single
+    Dim lE As Single
+    Dim H As Single
     
-    DrawTextW ToDevice.hDC, StrPtr(T), -1, RC, DT_CALCRECT
-    CountTextWidth = CSng(RC.Right - RC.Left)
-End Function
+    prevX = ToDevice.CurrentX
+    prevY = ToDevice.CurrentY
 
-Private Function CountTextHeight(ByVal T As String) As Single
-    Dim RC As RECT
-    
-    CountTextHeight = CSng(DrawTextW(ToDevice.hDC, StrPtr(T), -1, RC, DT_CALCRECT))
-End Function
+    lB = SafeGetDistance(SafeGetXmlNodeAttr(XmlNode, "begin"), PageWidth)
+    lE = SafeGetDistance(SafeGetXmlNodeAttr(XmlNode, "end"), PageWidth)
 
+    H = SafeGetDistance(XmlNode.Text, PageWidth)
+    ToDevice.Line (PaddingLeft + lB, ToDevice.CurrentY)-(PaddingLeft + lE, ToDevice.CurrentY + H), , BF
+
+    ToDevice.CurrentX = prevX
+    ToDevice.CurrentY = prevY + H
+End Sub
 
 Private Function SafeGetColor(ByVal T As String) As Long
     Dim S As String

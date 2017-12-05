@@ -126,7 +126,7 @@ Public Declare Function DestroyIcon Lib "user32" _
     (ByVal hIcon As Long) As Long
 
 Public Declare Function DrawIconEx Lib "user32" _
-    (ByVal hDC As Long, _
+    (ByVal hdc As Long, _
      ByVal xLeft As Long, _
      ByVal yTop As Long, _
      ByVal hIcon As Long, _
@@ -182,7 +182,7 @@ Public Type DEVMODE
     dmTTOption As Integer
     dmCollate As Integer
     dmFormName(CCHFORMNAME * 2 - 1) As Byte
-    'dmLogPixels As Long
+    dmLogPixels As Integer
     dmBitsPerPel As Long
     dmPelsWidth As Long
     dmPelsHeight As Long
@@ -467,19 +467,19 @@ Public Declare Function GetDC Lib "user32" _
      
 Public Declare Function ReleaseDC Lib "user32" _
     (ByVal hWnd As Long, _
-     ByVal hDC As Long) As Long
+     ByVal hdc As Long) As Long
     
 Public Declare Sub GetClientRect Lib "user32" _
     (ByVal hWnd As Long, _
      lpRect As RECT)
 
 Public Declare Function FillRect Lib "user32" _
-    (ByVal hDC As Long, _
+    (ByVal hdc As Long, _
      lpRect As RECT, _
      ByVal hBrush As Long) As Long
 
 Public Declare Function WindowFromDC Lib "user32" _
-    (ByVal hDC As Long) As Long
+    (ByVal hdc As Long) As Long
 
 Public Type ICONINFO
     fIcon As Long
@@ -586,7 +586,7 @@ Public Const LR_COPYFROMRESOURCE = &H4000
 Public Const LR_SHARED = &H18000 - &H10000
 
 Public Declare Function DrawTextW Lib "user32" _
-    (ByVal hDC As Long, _
+    (ByVal hdc As Long, _
      ByVal lpString As Long, _
      ByVal nCount As Long, _
      lpRect As RECT, _

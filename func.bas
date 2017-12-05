@@ -137,6 +137,7 @@ Public Function IsPrinterOnline(ByVal PrinterName As String) As Boolean
     Dim Buffer() As Byte
     Dim nNeeded As Long
     Dim PI_2 As PRINTER_INFO_2
+    Dim devm As DEVMODE
     
     IsPrinterOnline = False
     If 0 <> OpenPrinterW(StrPtr(PrinterName), hPrinter, 0) Then
@@ -145,6 +146,8 @@ Public Function IsPrinterOnline(ByVal PrinterName As String) As Boolean
         ReDim Buffer(nNeeded - 1)
         If 0 <> GetPrinterW(hPrinter, 2, VarPtr(Buffer(0)), nNeeded, nNeeded) Then
             CopyMemory VarPtr(PI_2), VarPtr(Buffer(0)), Len(PI_2)
+      '      CopyMemory VarPtr(devm), PI_2.pDevMode, Len(devm)
+      'Debug.Print devm.dmPaperWidth & " x " & devm.dmPaperLength
             IsPrinterOnline = (0 = PI_2.Status)
         End If
     

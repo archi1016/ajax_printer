@@ -49,3 +49,24 @@ Public Type PRINTER_INFO_2
 End Type
 
 'PRINTER_STATUS_OFFLINE = &H80
+
+Public Type DOCINFO
+    cbSize As Long
+    lpszDocName As Long
+    lpszOutput As Long
+    lpszDatatype As Long
+    fwType As Long
+End Type
+
+Public Declare Function StartDocW Lib "gdi32" _
+    (ByVal hdc As Long, _
+     lpdi As DOCINFO) As Long
+     
+Public Declare Function EndDoc Lib "gdi32" _
+    (ByVal hdc As Long) As Long
+
+Public Declare Function StartPage Lib "gdi32" _
+    (ByVal hdc As Long) As Long
+    
+Public Declare Function EndPage Lib "gdi32" _
+    (ByVal hdc As Long) As Long

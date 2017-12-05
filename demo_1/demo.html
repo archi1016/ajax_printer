@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh"><head>
+<meta charset="utf-8" />
+<meta http-equiv="Cache-Control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<link rel="stylesheet" href="sticker.css" />
+<script src="product.js"></script>
+<script src="sticker.js"></script>
+<title>產品標籤列印</title>
+</head><body>
+<div id="wrap">
+	
+<div class="dialog">
+	<div class="col-1">
+		<div class="product">
+			<div class="caption">產品</div>
+			<div class="list"><ul id="PRODUCT-LIST"></ul></div>
+		</div>
+	</div>
+	<div class="col-2">
+		<div class="argument">
+			<div class="caption">參數</div>
+			<div class="input"><ul>
+				<li>
+					<label>重量 (公克)</label>
+					<input id="PRODUCT-WEIGHT" type="number" value="100" min="1" />
+				</li>
+				<li>
+					<label>列印張數</label>
+					<input id="STICKER-QTY" type="number" value="1" min="1" max="30" />
+				</li>
+			</ul></div>
+		</div>
+		<div class="action">
+			<div class="caption">操作</div>
+			<div class="button"><ul>
+				<li class="preview"><button id="PREVIEW-STICKER">預覽</button></li>
+				<li class="print"><button id="PRINT-STICKER">列印</button></li>
+			</ul></div>
+		</div>
+	</div>
+	<div class="col-3">
+		<div class="preview">
+			<div class="caption">預覽區</div>
+			<div class="image"><img id="PREVIEW-IMAGE" src="" /></div>
+		</div>
+	</div>
+</div>
+
+<textarea id="XML-TEMPLATE">
+	<paper printer="{PRINTER}" copies="{COPIES}">
+		<l c="set_font">華康中特圓體</l>
+		<l c="set_size">6</l>
+		
+		<l c="padding_top">6</l>
+		<l c="padding_left">6</l>
+		<l c="padding_right">12</l>
+		
+		<l c="print" size="10">{NAME}</l>
+		<l c="scroll_down">2</l>
+		<l c="line">1</l>
+		
+		<l c="print_vt" x="84%" y="20%" align="left" font="Free 3 of 9" size="19">*{BARCODE}*</l>
+		<l c="print_vt" x="94%" y="65%" align="left" font="Consolas" size="10">{BARCODE}</l>
+		<l c="print_vt" x="94%" y="24%" align="left" font="Consolas" size="10">{PRICE}</l>
+		
+		<l c="scroll_down">3</l>
+		<l c="fields">
+			<f c="print" w="20%">用途用法：</f>
+			<f c="print" w="60%">清潔肌膚，沾水搓出泡沫塗抹，再以清水沖乾淨即可</f>
+		</l>
+		<l c="fields">
+			<f c="print" w="20%">注意事項：</f>
+			<f c="print" w="60%">如不適，請停用並諮詢醫師意見</f>
+		</l>
+		<l c="fields">
+			<f c="print" w="20%">保存方法：</f>
+			<f c="print" w="60%">請置於通風陰涼處並避免潮濕</f>
+		</l>
+		<l c="fields">
+			<f c="print" w="20%">製作成份：</f>
+			<f c="print" w="60%">{MATERIALS}</f>
+		</l>
+		
+		<l c="print_xy" x="87%" y="3%" border="0.5">臺灣製</l>
+		
+		<l c="absolute_y">72%</l>
+		<l c="line_w" begin="0%" end="80%">0.5</l>
+		<l c="scroll_down">1</l>
+		<l c="fields">
+			<f c="print" w="20%">包裝內容：</f>
+			<f c="print" w="60%">{WEIGHT} 公克 ±10%</f>
+		</l>
+		<l c="fields">
+			<f c="print" w="20%">出廠日期：</f>
+			<f c="print" w="60%">依包裝標示, 有效期限 12 個月</f>
+		</l>
+		<l c="fields">
+			<f c="print" w="20%">製造廠商：</f>
+			<f c="print" w="60%">手作皂工坊 00000000</f>
+		</l>
+		<l c="fields">
+			<f c="print" w="20%">製造廠址：</f>
+			<f c="print" w="60%">台南市</f>
+		</l>
+
+		<l c="done" />
+	</paper>
+</textarea>
+
+</div>
+
+</body></html>
